@@ -9,18 +9,21 @@ export type Match<T> = {
     matched: T,
     positions: Position[]
 }
-export type Effect<T> = {
-    type : "string";
-    position :"Position"
-
-}
 
 export type BoardEvent<T> = ?;
 
 export type BoardListener<T> = ?;
 
 export class Board<T> {
+    readonly width: number
+    readonly height: number
+
+    // Constructor here
+
     addListener(listener: BoardListener<T>) {
+    }
+
+    positions(): Position[] {
     }
 
     piece(p: Position): T | undefined {
