@@ -184,7 +184,6 @@ move(first: Position, second: Position): boolean {
   this.grid[second.row][second.col] = temp;
 
   // Check for matches.
-  const movedPiece = this.grid[second.row][second.col];
   const horizontalMatches = this.findHorizontalMatches();
   const verticalMatches = this.findVerticalMatches();
 
@@ -213,12 +212,22 @@ move(first: Position, second: Position): boolean {
 
   // Check if a refill is needed.
   if (cascadingMatches.length === 0) {
+    this.fillTopRowWithNewTiles(); // Fill top row with new tiles here
     this.listeners.forEach((listener) => {
       listener({ kind: "Refill" });
     });
   }
 
   return true;
+}
+
+private fillTopRowWithNewTiles() {
+  for (let col = 0; col < this.width; col++) {
+    if (!this.grid[0][col]) {
+      // Generate and place a new tile in the top row.
+      this.grid[0][col] = this.generator.next();
+    }
+  }
 }
 
 private findHorizontalMatches(): Match<T>[] {
@@ -248,7 +257,7 @@ private findHorizontalMatches(): Match<T>[] {
   return matches;
 }
 
-    private findVerticalMatches(): Match<T>[] {
+  private findVerticalMatches(): Match<T>[] {
   const matches: Match<T>[] = [];
 
   for (let row = 0; row < this.height - 2; row++) {
@@ -271,8 +280,6 @@ private findHorizontalMatches(): Match<T>[] {
       }
     }
   }
-
   return matches;
-}
-
+    };
 };
