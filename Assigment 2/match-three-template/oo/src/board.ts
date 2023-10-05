@@ -386,261 +386,191 @@ describe("Board", () => {
     })
 }) */
 
+
 export type Generator<T> = { next: () => T }
 
 export type Position = {
-  row: number,
-  col: number
+    row: number,
+    col: number
 }
 
 export type Match<T> = {
-  matched: T,
-  positions: Position[]
+    matched: T,
+    positions: Position[]
 }
 
 export type BoardEvent<T> = {
-  kind: 'Move',
-  match: Match<T>
+    type: 'move',
+    matches: Match<T>[]
 } | {
-  kind: 'Refill'
-}
+    type: 'add',
+    positions: Position[],
+    pieces: T[]
+} | {
+    type: 'remove',
+    positions: Position[]
+} | {
+    type: 'message',
+    message: string
+    };
+
+export type BoardListener<T> = (event: BoardEvent<T>) => void
 
 export class Board<T> {
-  readonly width: number
-  readonly height: number
-  private listeners: ((event: BoardEvent<T>) => void)[] = []
-  private generator: Generator<T>
-  private grid: T[][] = []
+    readonly width: number
+    readonly height: number
+    private listeners: BoardListener<T>[] = []
+    private generator: Generator<T>
+    private readonly grid: T[][] = []
 
-  constructor(generator: Generator<T>, width: number, height: number) {
-    this.width = width
-    this.height = height
-    this.grid = Array.from({ length: height }, () => Array.from({ length: width }, () => generator.next()))
-    this.generator = generator
-  }
-
-  addListener(listener: (event: BoardEvent<T>) => void) {
-    this.listeners.push(listener)
-  }
-
-  positions(): Position[] {
-    const positions: Position[] = []
-    for (let row = 0; row < this.height; row++) {
-      for (let col = 0; col < this.width; col++) {
-        positions.push({ row, col })
-      }
-    }
-    return positions
-  }
-
-  piece(p: Position): T | undefined {
-    if (p.row < 0 || p.row >= this.height || p.col < 0 || p.col >= this.width) {
-      return undefined
-    }
-    return this.grid[p.row][p.col]
-  }
-
-  canMove(first: Position, second: Position): boolean {
-    if (first.row < 0 || first.row >= this.height || first.col < 0 || first.col >= this.width) {
-      return false
-    }
-    if (second.row < 0 || second.row >= this.height || second.col < 0 || second.col >= this.width) {
-      return false
-    }
-    if (first.row === second.row && first.col === second.col) {
-      return false
-    }
-    if (first.row !== second.row && first.col !== second.col) {
-      return false
-    }
-    const firstPiece = this.piece(first)
-    const secondPiece = this.piece(second)
-    if (firstPiece === undefined || secondPiece === undefined) {
-      return false
-    }
-    const gridCopy = this.grid.map(row => row.map(piece => piece))
-    gridCopy[first.row][first.col] = secondPiece
-    gridCopy[second.row][second.col] = firstPiece
-    const matches = this.findMatches(gridCopy)
-    return matches.length > 0
-  }
-
-  findMatches(grid: T[][]): Match<T>[] {
-    const matches: Match<T>[] = []
-
-    // Check for horizontal matches
-    for (let row = 0; row < this.height; row++) {
-      let matchLength = 1
-      for (let col = 0; col < this.width; col++) {
-        if (col === this.width - 1 || grid[row][col] !== grid[row][col + 1]) {
-          if (matchLength >= 3) {
-            matches.push({ matched: grid[row][col], positions: Array.from({ length: matchLength }, (_, i) => ({ row, col: col - i })) })
-          }
-          matchLength = 1
-        } else {
-          matchLength++
-        }
-      }
+    // Constructor here
+    // read test commented  above, implement this constructor following the requirements from the test
+    constructor(generator: Generator<T>, width: number, height: number) {
+        this.width = width
+        this.height = height
+        this.grid = Array.from({ length: height }, () => Array.from({ length: width }, () => generator.next()))
+        this.generator = generator
     }
 
-    // Check for vertical matches
-    for (let col = 0; col < this.width; col++) {
-      let matchLength = 1
-      for (let row = 0; row < this.height; row++) {
-        if (row === this.height - 1 || grid[row][col] !== grid[row + 1][col]) {
-          if (matchLength >= 3) {
-            matches.push({ matched: grid[row][col], positions: Array.from({ length: matchLength }, (_, i) => ({ row: row - i, col })) })
-          }
-          matchLength = 1
-        } else {
-          matchLength++
-        }
-      }
+    addListener(listener: BoardListener<T>) {
+        // read test commented  above, implement this function following the requirements from the test
+        this.listeners.push(listener)
     }
 
-    return matches
-  }
-
-  move(first: Position, second: Position) {
-    if (!this.canMove(first, second)) {
-        return;
-    }
-
-    const firstPiece = this.piece(first);
-    const secondPiece = this.piece(second);
-
-    if (firstPiece === undefined || secondPiece === undefined) {
-        return;
-    }
-
-    // Swap the pieces in the grid
-    this.grid[first.row][first.col] = secondPiece;
-    this.grid[second.row][second.col] = firstPiece;
-
-    // Clone the grid for matching
-    const gridCopy = this.grid.map(row => [...row]);
-
-    // Find and process matches
-    const matches: Match<T>[] = [];
-
-    // Check horizontal matches
-    for (let row = 0; row < this.height; row++) {
-        const horizontalMatches = this.findHorizontalMatches(gridCopy, row);
-        matches.push(...horizontalMatches);
-    }
-
-    // Check vertical matches
-    for (let col = 0; col < this.width; col++) {
-        const verticalMatches = this.findVerticalMatches(gridCopy, col);
-        matches.push(...verticalMatches);
-    }
-
-    // Remove duplicate matches
-    const uniqueMatches = this.getUniqueMatches(matches);
-
-    // Notify listeners about the matches
-    if (uniqueMatches.length > 0) {
-        const { matched, positions } = uniqueMatches[0];
-        this.listeners.forEach(listener => listener({ kind: 'Move', match: { matched, positions } }));
-    } else {
-        this.listeners.forEach(listener => listener({ kind: 'Move', match: uniqueMatches[0] }));
-    }
-
-
-    // Remove matched pieces and shift pieces down
-    this.removeAndShift(gridCopy, uniqueMatches);
-
-    // Notify listeners about the message
-    this.listeners.forEach(listener => listener({ kind: 'Refill' }));
-
-    // Refill the board
-    this.refill();
-}
-
-
-  refill() {
-    const gridCopy = this.grid.map(row => row.map(piece => piece))
-    const matches = this.findMatches(gridCopy)
-    if (matches.length === 0) {
-      return
-    }
-    const positions = matches.flatMap(match => match.positions)
-    const pieces = positions.map(position => this.generator.next())
-    this.listeners.forEach(listener => listener({ kind: 'Refill' }))
-    this.listeners.forEach(listener => listener({ kind: 'Move', match: matches[0] }))
-    }
-
-    private findHorizontalMatches(grid: T[][], row: number): Match<T>[] {
-        const matches: Match<T>[] = [];
-        let matchLength = 1;
-        for (let col = 0; col < this.width; col++) {
-            if (col === this.width - 1 || grid[row][col] !== grid[row][col + 1]) {
-                if (matchLength >= 3) {
-                    const matchedPiece = grid[row][col];
-                    const positions = Array.from({ length: matchLength }, (_, i) => ({ row, col: col - i }));
-                    matches.push({ matched: matchedPiece, positions });
-                }
-                matchLength = 1;
-            } else {
-                matchLength++;
-            }
-        }
-        return matches;
-    }
-
-    private findVerticalMatches(grid: T[][], col: number): Match<T>[] {
-        const matches: Match<T>[] = [];
-        let matchLength = 1;
+    positions(): Position[] {
+        // read test commented  above, implement this function following the requirements from the test
+        const positions: Position[] = []
         for (let row = 0; row < this.height; row++) {
-            if (row === this.height - 1 || grid[row][col] !== grid[row + 1][col]) {
-                if (matchLength >= 3) {
-                    const matchedPiece = grid[row][col];
-                    const positions = Array.from({ length: matchLength }, (_, i) => ({ row: row - i, col }));
-                    matches.push({ matched: matchedPiece, positions });
+            for (let col = 0; col < this.width; col++) {
+                positions.push({ row, col })
+            }
+        }
+        return positions
+    }
+
+    piece(p: Position): T | undefined {
+        // implement this function according to ./_test_/board.test.ts
+        if (p.row < 0 || p.row >= this.height || p.col < 0 || p.col >= this.width) {
+            return undefined
+        }
+        return this.grid[p.row][p.col]
+    }
+
+    canMove(first: Position, second: Position): boolean {
+        if (first.row < 0 || first.row >= this.height || first.col < 0 || first.col >= this.width) {
+            return false
+        }
+        if (second.row < 0 || second.row >= this.height || second.col < 0 || second.col >= this.width) {
+            return false
+        }
+        if (first.row === second.row && first.col === second.col) {
+            return false
+        }
+        if (first.row !== second.row && first.col !== second.col) {
+            return false
+        }
+        const firstPiece = this.piece(first)
+        const secondPiece = this.piece(second)
+        if (firstPiece === undefined || secondPiece === undefined) {
+            return false
+        }
+        const gridCopy = this.grid.map(row => row.map(piece => piece))
+        gridCopy[first.row][first.col] = secondPiece
+        gridCopy[second.row][second.col] = firstPiece
+        const matches = this.findMatches(gridCopy)
+        return matches.length > 0
+    }
+
+    findMatches(grid: T[][]): Match<T>[] {
+        const matches: Match<T>[] = []
+        for (let row = 0; row < this.height; row++) {
+            let matchLength = 1
+            for (let col = 0; col < this.width; col++) {
+                if (col === this.width - 1 || grid[row][col] !== grid[row][col + 1]) {
+                    if (matchLength >= 3) {
+                        matches.push({
+                            matched: grid[row][col],
+                            positions: Array.from({ length: matchLength }, (_, i) => ({ row, col: col - i }))
+                        })
+                    }
+                    matchLength = 1
+                } else {
+                    matchLength++
                 }
-                matchLength = 1;
-            } else {
-                matchLength++;
             }
         }
-        return matches;
-    }
-
-    private getUniqueMatches(matches: Match<T>[]): Match<T>[] {
-        const uniqueMatches: Match<T>[] = [];
-        const seenMatches = new Set<string>();
-
-        for (const match of matches) {
-            const matchString = JSON.stringify(match.positions);
-            if (!seenMatches.has(matchString)) {
-                seenMatches.add(matchString);
-                uniqueMatches.push(match);
-            }
-        }
-
-        return uniqueMatches;
-    }
-
-    private removeAndShift(grid: T[][], matches: Match<T>[]) {
-        for (const match of matches) {
-            for (const position of match.positions) {
-                grid[position.row][position.col] = undefined as any;
-            }
-        }
-
-        // Shift pieces down
         for (let col = 0; col < this.width; col++) {
-            const filledPositions = [];
-            for (let row = this.height - 1; row >= 0; row--) {
-                if (grid[row][col] !== undefined) {
-                    filledPositions.push(grid[row][col]);
+            let matchLength = 1
+            for (let row = 0; row < this.height; row++) {
+                if (row === this.height - 1 || grid[row][col] !== grid[row + 1][col]) {
+                    if (matchLength >= 3) {
+                        matches.push({
+                            matched: grid[row][col],
+                            positions: Array.from({ length: matchLength }, (_, i) => ({ row: row - i, col }))
+                        })
+                    }
+                    matchLength = 1
+                } else {
+                    matchLength++
                 }
             }
-            filledPositions.reverse();
-            for (let row = this.height - 1; row >= 0; row--) {
-                grid[row][col] = filledPositions.pop() || undefined;
-            }
         }
+        return matches
     }
 
+    move(first: Position, second: Position) {
+        // implement this function according to ./_test_/board.test.ts
+        if (!this.canMove(first, second)) {
+            return
+        }
+        const firstPiece = this.piece(first)
+        const secondPiece = this.piece(second)
+        if (firstPiece === undefined || secondPiece === undefined) {
+            return
+        }
+        this.grid[first.row][first.col] = secondPiece
+        this.grid[second.row][second.col] = firstPiece
+        const matches = this.findMatches(this.grid)
+        if (matches.length === 0) {
+            this.grid[first.row][first.col] = firstPiece
+            this.grid[second.row][second.col] = secondPiece
+            return
+        }
+        const positions = matches.flatMap(match => match.positions)
+        const pieces = positions.map(position => this.piece(position))
+        this.grid[first.row][first.col] = undefined
+        this.grid[second.row][second.col] = undefined
+        this.listeners.forEach(listener => listener({ type: 'move', matches }))
+        this.listeners.forEach(listener => listener({ type: 'remove', positions }))
+        this.listeners.forEach(listener => listener({ type: 'add', positions, pieces }))
+        this.listeners.forEach(listener => listener({ type: 'message', message: 'Match!' }))
+        this.refill()
+    }
+    refill() {
+        // implement this function according to ./_test_/board.test.ts
+        const gridCopy = this.grid.map(row => row.map(piece => piece))
+        for (let col = 0; col < this.width; col++) {
+            let row = this.height - 1
+            for (let i = this.height - 1; i >= 0; i--) {
+                if (gridCopy[i][col] !== undefined) {
+                    gridCopy[row][col] = gridCopy[i][col]
+                    row--
+                }
+            }
+            for (let i = row; i >= 0; i--) {
+                gridCopy[i][col] = this.generator.next()
+            }
+        }
+        const matches = this.findMatches(gridCopy)
+        if (matches.length === 0) {
+            return
+        }
+        const positions = matches.flatMap(match => match.positions)
+        const pieces = positions.map(position => this.piece(position))
+        this.listeners.forEach(listener => listener({ type: 'move', matches }))
+        this.listeners.forEach(listener => listener({ type: 'remove', positions }))
+        this.listeners.forEach(listener => listener({ type: 'add', positions, pieces }))
+        this.listeners.forEach(listener => listener({ type: 'message', message: 'Match!' }))
+        this.refill()
+    }
 }
