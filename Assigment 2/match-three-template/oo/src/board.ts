@@ -1,4 +1,4 @@
-export type Generator<T>= { next:() => T } 
+export type Generator<T>= { next:() => T }
 
 export type Position = {
     row: number,
@@ -15,9 +15,7 @@ export type BoardEvent<T> = {
   match?: Match<T>;  // Optional match information.
 };
 
-
 export type BoardListener<T> = (event: BoardEvent<T>) => void;
-
 
 export class Board<T> {
   readonly width: number;
@@ -119,7 +117,15 @@ private swapAndCheckMatch(first: Position, second: Position): boolean {
       }
       return streak >= 3;
   }
-  
+
+  private deleteMatches(matches: Match<T>[]): void {
+    for (const match of matches) {
+        for (const position of match.positions) {
+            this.grid[position.row][position.col] = undefined;
+        }
+    }
+}
+
   move(first: Position, second: Position) {
     if (!this.canMove(first, second)) {
         return;
@@ -134,7 +140,7 @@ private swapAndCheckMatch(first: Position, second: Position): boolean {
     do {
         matches = this.findMatches();
         if (matches.length) {
-            this.deleteMatches(matches);
+            this.deleteMatches(matches);  // Call the deleteMatches method here
             this.generateNewTiles();
         }
     } while (matches.length);
@@ -142,60 +148,56 @@ private swapAndCheckMatch(first: Position, second: Position): boolean {
     // TODO: Notify listeners of relevant events.
 }
 
+
 private findMatches(): Match<T>[] {
-    const matches: Match<T>[] = [];
+  const matches: Match<T>[] = [];
 
-    // Horizontal matches
-    for (let row = 0; row < this.height; row++) {
-        let col = 0;
-        while (col < this.width - 2) {
-            if (this.grid[row][col] && this.grid[row][col] === this.grid[row][col + 1] && this.grid[row][col] === this.grid[row][col + 2]) {
-                const startPosition = col;
-                while (col < this.width && this.grid[row][col] === this.grid[row][startPosition]) {
-                    col++;
-                }
-                const endPosition = col - 1;
-                const matchPositions: Position[] = [];
-                for (let m = startPosition; m <= endPosition; m++) {
-                    matchPositions.push({ row, col: m });
-                }
-                matches.push({ matched: this.grid[row][startPosition], positions: matchPositions });
-            } else {
-                col++;
-            }
-        }
-    }
+  // Horizontal matches
+  for (let row = 0; row < this.height; row++) {
+      let col = 0;
+      while (col < this.width - 2) {
+          if (this.grid[row][col] && this.grid[row][col] === this.grid[row][col + 1] && this.grid[row][col] === this.grid[row][col + 2]) {
+              const startPosition = col;
+              while (col < this.width && this.grid[row][col] === this.grid[row][startPosition]) {
+                  col++;
+              }
+              const endPosition = col - 1;
+              const matchPositions: Position[] = [];
+              for (let m = startPosition; m <= endPosition; m++) {
+                  matchPositions.push({ row, col: m });
+              }
+              matches.push({ matched: this.grid[row][startPosition], positions: matchPositions });
+          } else {
+              col++;
+          }
+      }
+  }
 
-    // Vertical matches
-    for (let col = 0; col < this.width; col++) {
-        let row = 0;
-        while (row < this.height - 2) {
-            if (this.grid[row][col] && this.grid[row][col] === this.grid[row + 1][col] && this.grid[row][col] === this.grid[row + 2][col]) {
-                const startPosition = row;
-                while (row < this.height && this.grid[row][col] === this.grid[startPosition][col]) {
-                    row++;
-                }
-                const endPosition = row - 1;
-                const matchPositions: Position[] = [];
-                for (let m = startPosition; m <= endPosition; m++) {
-                    matchPositions.push({ row: m, col });
-                }
-                matches.push({ matched: this.grid[startPosition][col], positions: matchPositions });
-            } else {
-                row++;
-            }
-        }
-    }
-
-    return matches;
+  // Vertical matches
+  // Vertical matches
+for (let col = 0; col < this.width; col++) {
+  let row = 0;
+  while (row < this.height - 2) {
+      if (this.grid[row][col] && this.grid[row][col] === this.grid[row + 1][col] && this.grid[row][col] === this.grid[row + 2][col]) {
+          const startPosition = row;
+          row += 2;  // skip the tiles we already know are matching
+          while (row + 1 < this.height && this.grid[row + 1][col] === this.grid[startPosition][col]) {
+              row++;
+          }
+          const endPosition = row;
+          const matchPositions: Position[] = [];
+          for (let m = startPosition; m <= endPosition; m++) {
+              matchPositions.push({ row: m, col });
+          }
+          matches.push({ matched: this.grid[startPosition][col], positions: matchPositions });
+      } else {
+          row++;
+      }
+  }
 }
 
-private deleteMatches(matches: Match<T>[]) {
-    for (const match of matches) {
-        for (const position of match.positions) {
-            this.grid[position.row][position.col] = undefined;
-        }
-    }
+
+  return matches;
 }
 
 private generateNewTiles() {
@@ -220,5 +222,4 @@ private generateNewTiles() {
       }
   }
 }
-
 }
