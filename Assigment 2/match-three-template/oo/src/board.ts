@@ -52,22 +52,21 @@ export class Board<T> {
   }
 
   canMove(first: Position, second: Position): boolean {
-    if (first.row === second.row) {
-        if (Math.abs(first.col - second.col) === 1) {
-            return this.swapAndCheckMatch(first, second);
-        }
-        return false;
+    if (first.row === second.row && Math.abs(first.col - second.col) === 1) {
+        return this.swapAndCheckMatch(first, second);
     }
 
-    if (first.col === second.col) {
-        if (Math.abs(first.row - second.row) === 1) {
-            return this.swapAndCheckMatch(first, second);
-        }
-        return false;
+    if (first.col === second.col && Math.abs(first.row - second.row) === 1) {
+        return this.swapAndCheckMatch(first, second);
+    }
+
+    if (first.col === second.col && Math.abs(first.row - second.row) === 2) {
+        return this.swapAndCheckMatch(first, second);
     }
 
     return false;
 }
+
 private swapAndCheckMatch(first: Position, second: Position): boolean {
   // Temporarily swap pieces
   const temp = this.grid[first.row][first.col];
