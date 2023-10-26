@@ -1,6 +1,6 @@
 
 export type Generator<T>= { next:() => T }
-=======
+
 
 
   export type Position = {
@@ -241,58 +241,4 @@ export class Board<T> {
 
     }
   }
-}
 
-private findHorizontalMatches(): Match<T>[] {
-  const matches: Match<T>[] = [];
-
-  for (let row = 0; row < this.height; row++) {
-    for (let col = 0; col < this.width - 2; col++) {
-      const piece = this.grid[row][col];
-
-      if (
-        piece === this.grid[row][col + 1] &&
-        piece === this.grid[row][col + 2]
-      ) {
-        const match: Match<T> = {
-          matched: piece,
-          positions: [
-            { row, col },
-            { row, col: col + 1 },
-            { row, col: col + 2 },
-          ],
-        };
-        matches.push(match);
-      }
-    }
-  }
-
-  return matches;
-}
-
-  private findVerticalMatches(): Match<T>[] {
-  const matches: Match<T>[] = [];
-
-  for (let row = 0; row < this.height - 2; row++) {
-    for (let col = 0; col < this.width; col++) {
-      const piece = this.grid[row][col];
-
-      if (
-        piece === this.grid[row + 1][col] &&
-        piece === this.grid[row + 2][col]
-      ) {
-        const match: Match<T> = {
-          matched: piece,
-          positions: [
-            { row, col },
-            { row: row + 1, col },
-            { row: row + 2, col },
-          ],
-        };
-        matches.push(match);
-      }
-    }
-  }
-  return matches;
-    };
-};
